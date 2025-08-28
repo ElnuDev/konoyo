@@ -19,7 +19,20 @@
         src = cleanSource ./.;
 
         # Packages required for compiling
-        nativeBuildInputs = with env.pkgs; [];
+        nativeBuildInputs = with env.pkgs; [
+          wayland
+          wayland-scanner
+          libGL
+          libxkbcommon
+          xorg.libX11
+          xorg.libXrender
+          xorg.libXcursor
+          xorg.libXext
+          xorg.libXfixes
+          xorg.libXi
+          xorg.libXinerama
+          xorg.libXrandr
+        ];
 
         # Packages required for linking
         buildInputs = with env.pkgs; [];

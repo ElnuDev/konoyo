@@ -1,27 +1,27 @@
 const std = @import("std");
-const default = @import("default");
+//const default = @import("default");
+const rl = @import("raylib");
+
+fn println(comptime fmt: []const u8, args: anytype) void {
+    std.debug.print(fmt ++ "\n", args);
+}
+
+const RENDER_WIDTH = 480;
+const RENDER_HEIGHT = 360;
+
+const ZOOM = 2;
+
+const WINDOW_WIDTH = RENDER_WIDTH * ZOOM;
+const WINDOW_HEIGHT = RENDER_HEIGHT * ZOOM;
 
 pub fn main() !void {
-    // Prints to stderr, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-    try default.bufferedPrint();
-}
+    println("Hello world!", .{});
+    rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "shino");
 
-test "simple test" {
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(i32) = .empty;
-    defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(gpa, 42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
-}
+    while (!rl.windowShouldClose()) {
+        rl.beginDrawing();
+        defer rl.endDrawing();
 
-test "fuzz example" {
-    const Context = struct {
-        fn testOne(context: @This(), input: []const u8) anyerror!void {
-            _ = context;
-            // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-            try std.testing.expect(!std.mem.eql(u8, "canyoufindme", input));
-        }
-    };
-    try std.testing.fuzz(Context{}, Context.testOne, .{});
+        rl.clearBackground(rl.Color.gray);
+    }
 }
