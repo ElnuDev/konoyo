@@ -1,7 +1,7 @@
 const std = @import("std");
 //const default = @import("default");
 const rl = @import("raylib");
-const World = @import("world.zig").World;
+const ecs = @import("ecs.zig");
 const systems = @import("systems.zig");
 const entities = @import("entities.zig");
 
@@ -21,12 +21,12 @@ const window_width = render_width * zoom;
 const window_height = render_height * zoom;
 
 pub fn main() !void {
-    var world = World.init(allocator);
-
     rl.initWindow(window_width, window_height, "shino");
     rl.setWindowState(rl.ConfigFlags {
         .vsync_hint = true,
     });
+
+    var world = ecs.World.init();
 
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();

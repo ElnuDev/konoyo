@@ -1,7 +1,6 @@
 const rl = @import("raylib");
 
-const World = @import("world.zig").World;
-const Entity = @import("world.zig").Entity;
+const ecs = @import("ecs.zig");
 const Sprite = @import("graphics/sprite.zig").Sprite;
 
 const TransformComponent = @import("components/transform.zig").TransformComponent;
@@ -10,12 +9,12 @@ const SpriteComponent = @import("components/sprite.zig").SpriteComponent;
 const allactor = @import("main.zig").allocator;
 var player_sprite: ?*Sprite = null;
 
-pub fn player(world: *World, position: rl.Vector2) Entity {
+pub fn player(world: *ecs.World, position: rl.Vector2) ecs.EntityId {
     const entity = world.createEntity();
-    world.transforms.put(entity, TransformComponent {
+    world.insert(entity, TransformComponent {
         .position = position,
-    }) catch unreachable;
-    world.sprites.put(entity, SpriteComponent {
+    });
+    world.insert(entity, SpriteComponent {
         .sprite = player_sprite orelse label: {
             const sprite = allactor.create(Sprite) catch unreachable;
             defer player_sprite = sprite;
@@ -24,6 +23,6 @@ pub fn player(world: *World, position: rl.Vector2) Entity {
             };
             break :label sprite;
         },
-    }) catch unreachable;
+    });
     return entity;
 }
