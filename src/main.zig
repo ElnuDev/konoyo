@@ -2,6 +2,7 @@ const std = @import("std");
 //const default = @import("default");
 const rl = @import("raylib");
 const ecs = @import("ecs.zig");
+const World = @import("world.zig").World;
 const systems = @import("systems.zig");
 const entities = @import("entities.zig");
 
@@ -26,7 +27,7 @@ pub fn main() !void {
         .vsync_hint = true,
     });
 
-    var world = ecs.World.init();
+    var world = World.init();
 
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();

@@ -1,14 +1,15 @@
 const std = @import("std");
 const ecs = @import("ecs.zig");
-const EntityId = @import("ecs.zig").EntityId;
-const allocator = @import("main.zig").allocator;
-const Transform = @import("components/transform.zig").TransformComponent;
-const Sprite = @import("components/sprite.zig").SpriteComponent;
+
+const _world = @import("world.zig");
+const World = _world.World;
+const TransformComponent = _world.TransformComponent;
+const SpriteComponent = _world.SpriteComponent;
 const rl = @import("raylib");
 const entities = @import("entities.zig");
 
-pub fn draw_sprites(world: *ecs.World) void {
-    const Query = &[_]type{ ?Transform, Sprite };
+pub fn draw_sprites(world: *World) void {
+    const Query = &[_]type{ ?TransformComponent, SpriteComponent };
     const Drawable = ecs.QueryResult(Query);
     const drawables = world.query(Query);
     const lessThanFn = struct {
@@ -26,8 +27,8 @@ pub fn draw_sprites(world: *ecs.World) void {
     }
 }
 
-pub fn player_movement(world: *ecs.World) void {
-    const Query = &[_]type{ *Transform };
+pub fn player_movement(world: *World) void {
+    const Query = &[_]type{ *TransformComponent };
     const players = world.query(Query);
     const delta = (rl.Vector2 {
         .x = @floatFromInt(
@@ -47,7 +48,7 @@ pub fn player_movement(world: *ecs.World) void {
     }
 }
 
-pub fn spawn_player(world: *ecs.World) void {
+pub fn spawn_player(world: *World) void {
     if (!rl.isMouseButtonPressed(rl.MouseButton.left)) {
         return;
     }

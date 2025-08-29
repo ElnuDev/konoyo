@@ -1,15 +1,17 @@
 const rl = @import("raylib");
 
 const ecs = @import("ecs.zig");
-const Sprite = @import("graphics/sprite.zig").Sprite;
+const Sprite = @import("graphics.zig").Sprite;
 
-const TransformComponent = @import("components/transform.zig").TransformComponent;
-const SpriteComponent = @import("components/sprite.zig").SpriteComponent;
+const _world = @import("world.zig");
+const World = _world.World;
+const TransformComponent = _world.TransformComponent;
+const SpriteComponent = _world.SpriteComponent;
 
 const allactor = @import("main.zig").allocator;
 var player_sprite: ?*Sprite = null;
 
-pub fn player(world: *ecs.World, position: rl.Vector2) ecs.EntityId {
+pub fn player(world: *World, position: rl.Vector2) ecs.EntityId {
     const entity = world.createEntity();
     world.insert(entity, TransformComponent {
         .position = position,

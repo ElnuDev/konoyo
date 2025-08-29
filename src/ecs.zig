@@ -1,12 +1,5 @@
 const std = @import("std");
 const allocator = @import("main.zig").allocator;
-const TransformComponent = @import("components/transform.zig").TransformComponent;
-const SpriteComponent = @import("components/sprite.zig").SpriteComponent;
-
-const ComponentList = &[_]type{
-    TransformComponent,
-    SpriteComponent,
-};
 
 fn toEntityName(component: type) [:0]const u8 {
     const input = @typeName(component);
@@ -145,63 +138,65 @@ fn ComponentSet(comptime Components: []const type) type {
 
 pub const EntityId = u32;
 
-pub const World = struct {
-    next_entity_id: EntityId = 0,
-    entities: Set(EntityId) = undefined,
-    components: ComponentSet(ComponentList) = undefined,
+pub fn World(comptime Components: []const type) type {
+    return struct {
+        next_entity_id: EntityId = 0,
+        entities: Set(EntityId) = undefined,
+        components: ComponentSet(Components) = undefined,
 
-    pub fn init() @This() {
-        var self = @This() {};
-        self.entities = Set(EntityId).init(allocator);
-        inline for (std.meta.fields(@TypeOf(self.components))) |field| {
-            @field(self.components, field.name) = @FieldType(@TypeOf(self.components), field.name).init(allocator);
-        }
-        return self;
-    }
-
-    pub fn query(self: *const @This(), comptime Query: []const type) QueryResults(Query) {
-        var results = QueryResults(Query)
-            .initCapacity(allocator, self.entities.count()) catch unreachable;
-        var iter = self.entities.keyIterator();
-        outer: while (iter.next()) |entity| {
-            var result = results.addOne(allocator) catch unreachable;
-            result.entity = entity.*;
-            inline for (std.meta.fields(QueryResult(Query))) |field| inner: {
-                comptime if (std.mem.eql(u8, field.name, "entity")) break :inner;
-                @field(result, field.name) = @field(self.components, toEntityNamePlural(field.@"type")).getPtr(entity.*) orelse continue :outer;
+        pub fn init() @This() {
+            var self = @This() {};
+            self.entities = Set(EntityId).init(allocator);
+            inline for (std.meta.fields(@TypeOf(self.components))) |field| {
+                @field(self.components, field.name) = @FieldType(@TypeOf(self.components), field.name).init(allocator);
             }
+            return self;
         }
-        return results;
-    }
 
-    pub fn get(self: *const @This(), entity: EntityId, comptime Component: type) ?*Component {
-        return @field(self.components, toEntityNamePlural(Component)).getPtr(entity);
-    }
-
-    pub fn insert(self: *@This(), entity: EntityId, component: anytype) void {
-        @field(self.components, toEntityNamePlural(@TypeOf(component))).put(entity, component) catch unreachable;
-    }
-
-    pub fn delete(self: *@This(), entity: EntityId, comptime Component: type) bool {
-        return @field(self.components, toEntityNamePlural(Component)).remove(entity);
-    }
-
-    pub fn existsEntity(self: *const @This(), entity: EntityId) bool {
-        return self.entities.contains(entity);
-    }
-
-    pub fn createEntity(self: *@This()) EntityId {
-        defer self.next_entity_id += 1;
-        const entity = self.next_entity_id;
-        self.entities.put(entity, {}) catch unreachable;
-        return entity;
-    }
-
-    pub fn deleteEntity(self: *@This(), entity: EntityId) bool {
-        if (!self.entities.remove(entity)) return false;
-        inline for (std.meta.fields(@TypeOf(self.components))) |field| {
-            _ = @field(self.components, field.name).remove(entity);
+        pub fn query(self: *const @This(), comptime Query: []const type) QueryResults(Query) {
+            var results = QueryResults(Query)
+                .initCapacity(allocator, self.entities.count()) catch unreachable;
+            var iter = self.entities.keyIterator();
+            outer: while (iter.next()) |entity| {
+                var result = results.addOne(allocator) catch unreachable;
+                result.entity = entity.*;
+                inline for (std.meta.fields(QueryResult(Query))) |field| inner: {
+                    comptime if (std.mem.eql(u8, field.name, "entity")) break :inner;
+                    @field(result, field.name) = @field(self.components, toEntityNamePlural(field.@"type")).getPtr(entity.*) orelse continue :outer;
+                }
+            }
+            return results;
         }
-        return true;
-    }
-};
+
+        pub fn get(self: *const @This(), entity: EntityId, comptime Component: type) ?*Component {
+            return @field(self.components, toEntityNamePlural(Component)).getPtr(entity);
+        }
+
+        pub fn insert(self: *@This(), entity: EntityId, component: anytype) void {
+            @field(self.components, toEntityNamePlural(@TypeOf(component))).put(entity, component) catch unreachable;
+        }
+
+        pub fn delete(self: *@This(), entity: EntityId, comptime Component: type) bool {
+            return @field(self.components, toEntityNamePlural(Component)).remove(entity);
+        }
+
+        pub fn existsEntity(self: *const @This(), entity: EntityId) bool {
+            return self.entities.contains(entity);
+        }
+
+        pub fn createEntity(self: *@This()) EntityId {
+            defer self.next_entity_id += 1;
+            const entity = self.next_entity_id;
+            self.entities.put(entity, {}) catch unreachable;
+            return entity;
+        }
+
+        pub fn deleteEntity(self: *@This(), entity: EntityId) bool {
+            if (!self.entities.remove(entity)) return false;
+            inline for (std.meta.fields(@TypeOf(self.components))) |field| {
+                _ = @field(self.components, field.name).remove(entity);
+            }
+            return true;
+        }
+    };
+}
