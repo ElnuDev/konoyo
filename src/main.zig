@@ -1,27 +1,43 @@
 const std = @import("std");
 //const default = @import("default");
 const rl = @import("raylib");
+const World = @import("world.zig").World;
+const systems = @import("systems.zig");
+const entities = @import("entities.zig");
 
-fn println(comptime fmt: []const u8, args: anytype) void {
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+pub const allocator = gpa.allocator();
+
+pub fn println(comptime fmt: []const u8, args: anytype) void {
     std.debug.print(fmt ++ "\n", args);
 }
 
-const RENDER_WIDTH = 480;
-const RENDER_HEIGHT = 360;
+const render_width = 480;
+const render_height = 360;
 
-const ZOOM = 2;
+const zoom = 2;
 
-const WINDOW_WIDTH = RENDER_WIDTH * ZOOM;
-const WINDOW_HEIGHT = RENDER_HEIGHT * ZOOM;
+const window_width = render_width * zoom;
+const window_height = render_height * zoom;
 
 pub fn main() !void {
-    println("Hello world!", .{});
-    rl.initWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "shino");
+    var world = World.init(allocator);
+
+    rl.initWindow(window_width, window_height, "shino");
+    rl.setWindowState(rl.ConfigFlags {
+        .vsync_hint = true,
+    });
 
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
 
         rl.clearBackground(rl.Color.gray);
+
+        systems.player_movement(&world);
+        systems.draw_sprites(&world);
+        systems.spawn_player(&world);
+
+        rl.drawFPS(0, 0);
     }
 }
