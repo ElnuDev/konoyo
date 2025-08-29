@@ -27,7 +27,7 @@ pub fn main() !void {
         .vsync_hint = true,
     });
 
-    var world = World.init();
+    var world = World.init(allocator);
 
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();

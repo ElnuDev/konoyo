@@ -1,5 +1,4 @@
 const std = @import("std");
-const allocator = @import("main.zig").allocator;
 
 fn toEntityName(component: type) [:0]const u8 {
     const input = @typeName(component);
@@ -141,12 +140,16 @@ pub const EntityId = u32;
 pub fn World(comptime Components: []const type) type {
     return struct {
         next_entity_id: EntityId = 0,
-        entities: Set(EntityId) = undefined,
-        components: ComponentSet(Components) = undefined,
+        entities: Set(EntityId),
+        components: ComponentSet(Components),
+        allocator: std.mem.Allocator,
 
-        pub fn init() @This() {
-            var self = @This() {};
-            self.entities = Set(EntityId).init(allocator);
+        pub fn init(allocator: std.mem.Allocator) @This() {
+            var self = @This() {
+                .entities = Set(EntityId).init(allocator),
+                .components = undefined,
+                .allocator = allocator,
+            };
             inline for (std.meta.fields(@TypeOf(self.components))) |field| {
                 @field(self.components, field.name) = @FieldType(@TypeOf(self.components), field.name).init(allocator);
             }
@@ -155,10 +158,10 @@ pub fn World(comptime Components: []const type) type {
 
         pub fn query(self: *const @This(), comptime Query: []const type) QueryResults(Query) {
             var results = QueryResults(Query)
-                .initCapacity(allocator, self.entities.count()) catch unreachable;
+                .initCapacity(self.allocator, self.entities.count()) catch unreachable;
             var iter = self.entities.keyIterator();
             outer: while (iter.next()) |entity| {
-                var result = results.addOne(allocator) catch unreachable;
+                var result = results.addOne(self.allocator) catch unreachable;
                 result.entity = entity.*;
                 inline for (std.meta.fields(QueryResult(Query))) |field| inner: {
                     comptime if (std.mem.eql(u8, field.name, "entity")) break :inner;
