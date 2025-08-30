@@ -1,6 +1,6 @@
 const rl = @import("raylib");
 
-const ecs = @import("ecs.zig");
+const ecs = @import("konoyo");
 const Sprite = @import("graphics.zig").Sprite;
 
 const _world = @import("world.zig");

@@ -1,5 +1,5 @@
 const rl = @import("raylib");
-const ecs = @import("ecs.zig");
+const ecs = @import("konoyo");
 const graphics = @import("graphics.zig");
 
 pub const World = ecs.World(&[_]type{

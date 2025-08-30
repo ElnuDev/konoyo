@@ -1,5 +1,5 @@
 const std = @import("std");
-const ecs = @import("ecs.zig");
+const ecs = @import("konoyo");
 
 const _world = @import("world.zig");
 const World = _world.World;
