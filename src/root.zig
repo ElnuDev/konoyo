@@ -179,6 +179,7 @@ pub fn World(comptime Components: []const type) type {
         }
 
         pub fn insert(self: *@This(), entity: EntityId, component: anytype) void {
+            std.debug.assert(self.entities.contains(entity));
             @field(self.components, componentNamePlural(@TypeOf(component))).put(entity, component) catch unreachable;
         }
 
