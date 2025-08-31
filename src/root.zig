@@ -248,6 +248,7 @@ const TestWorld = World(&[_]type {
 
 test "optional" {
     var world = TestWorld.init(std.testing.allocator);
+    defer world.deinit();
 
     const entity = world.createEntity();
     world.insert(entity, TestAComponent {});
@@ -256,6 +257,4 @@ test "optional" {
     defer world.allocator.free(results);
 
     assert(results.len == 1);
-
-    world.deinit();
 }
