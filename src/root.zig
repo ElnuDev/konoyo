@@ -19,7 +19,7 @@ pub fn QueryResult(comptime Query: []const type) type {
         var Component: type = undefined;
         defer Components[i] = Component;
         fields[i + 1] = .{
-            .name = componentName(QueryParam),
+            .name = componentName(QueryParam) catch unreachable,
             // immutability by default
             .type = inner: switch (@typeInfo(QueryParam)) {
                 // *MyComponent => *MyComponent
@@ -66,7 +66,7 @@ pub fn QueryResult(comptime Query: []const type) type {
 }
 
 /// ArrayList of results for the given ECS query.
-pub fn QueryResults(comptime Query: []const type) type {
+fn QueryResults(comptime Query: []const type) type {
     return std.ArrayList(QueryResult(Query));
 }
 
@@ -101,7 +101,8 @@ fn ComponentSet(comptime Components: []const type) type {
             .@"struct" => {},
             else => @compileError("All components must be structs"),
         }
-        const name = componentName(Component);
+        const name = componentName(Component)
+            catch @compileError("Component name \"" ++ @typeName(Component) ++ "\" must end in \"Component\"");
         fields[i] = .{
             .name = if (name[name.len - 2] == 'y') name ++ "ies" else name ++ "s",
             .type = EntityMap(Component),
@@ -146,6 +147,18 @@ pub fn World(comptime Components: []const type) type {
         components: ComponentSet(Components),
         allocator: std.mem.Allocator,
 
+        fn validateComponent(comptime Component: type) void {
+            const maybe_name: ?[:0]const u8 = componentNamePlural(Component) catch null;
+            if (maybe_name) |name| {
+                inline for (std.meta.fields(ComponentSet(Components))) |field| {
+                    if (std.mem.eql(u8, field.name, name)) {
+                        return;
+                    }
+                }
+            }
+            @compileError("Component `" ++ @typeName(Component) ++ "` isn't registered on world");
+        }
+
         pub fn init(allocator: std.mem.Allocator) @This() {
             var self = @This() {
                 .entities = Set(EntityId).init(allocator),
@@ -158,8 +171,15 @@ pub fn World(comptime Components: []const type) type {
             return self;
         }
 
+        pub fn deinit(self: *@This()) void {
+            self.entities.deinit();
+            inline for (std.meta.fields(@TypeOf(self.components))) |field| {
+                @field(self.components, field.name).deinit();
+            }
+        }
+
         /// Query the ECS world.
-        pub fn query(self: *const @This(), comptime Query: []const type) QueryResults(Query) {
+        pub fn query(self: *const @This(), comptime Query: []const type) []QueryResult(Query) {
             var results = QueryResults(Query)
                 .initCapacity(self.allocator, self.entities.count()) catch unreachable;
             var iter = self.entities.keyIterator();
@@ -168,10 +188,13 @@ pub fn World(comptime Components: []const type) type {
                 result.entity = entity.*;
                 inline for (std.meta.fields(QueryResult(Query))) |field| inner: {
                     comptime if (std.mem.eql(u8, field.name, "entity")) break :inner;
-                    @field(result, field.name) = @field(self.components, componentNamePlural(field.@"type")).getPtr(entity.*) orelse continue :outer;
+                    @field(result, field.name) = @field(
+                        self.components,
+                        componentNamePlural(field.@"type") catch unreachable,
+                    ).getPtr(entity.*) orelse continue :outer;
                 }
             }
-            return results;
+            return results.toOwnedSlice(self.allocator) catch unreachable;
         }
 
         pub fn get(self: *const @This(), entity: EntityId, comptime Component: type) ?*Component {
@@ -179,11 +202,16 @@ pub fn World(comptime Components: []const type) type {
         }
 
         pub fn insert(self: *@This(), entity: EntityId, component: anytype) void {
+            comptime @This().validateComponent(@TypeOf(component));
             std.debug.assert(self.entities.contains(entity));
-            @field(self.components, componentNamePlural(@TypeOf(component))).put(entity, component) catch unreachable;
+            @field(
+                self.components,
+                componentNamePlural(@TypeOf(component)) catch unreachable,
+            ).put(entity, component) catch unreachable;
         }
 
         pub fn delete(self: *@This(), entity: EntityId, comptime Component: type) bool {
+            comptime @This().validateComponent(Component);
             return @field(self.components, componentNamePlural(Component)).remove(entity);
         }
 
@@ -207,4 +235,27 @@ pub fn World(comptime Components: []const type) type {
             return true;
         }
     };
+}
+
+const assert = std.debug.assert;
+
+const TestAComponent = struct {};
+const TestBComponent = struct {};
+const TestWorld = World(&[_]type {
+    TestAComponent,
+    TestBComponent,
+});
+
+test "optional" {
+    var world = TestWorld.init(std.testing.allocator);
+
+    const entity = world.createEntity();
+    world.insert(entity, TestAComponent {});
+
+    const results = world.query(&[_]type { TestAComponent, ?TestBComponent });
+    defer world.allocator.free(results);
+
+    assert(results.len == 1);
+
+    world.deinit();
 }

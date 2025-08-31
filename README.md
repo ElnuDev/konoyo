@@ -53,7 +53,8 @@ To query the world, call `world.query`, passing in a query slice of types you wa
 ```ZIG
 const Query = &[_]type{ *TransformComponent, *const SpriteComponent };
 const results = world.query(query);
-for (results.items) |e| {
+defer world.allocator.free(results);
+for (results) |e| {
     std.debug.print("Entity ID: {}\n", .{ e.entity });
     e.transform.position.x += 42;
     e.sprite.draw(e.transform.position);

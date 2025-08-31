@@ -1,11 +1,15 @@
 const std = @import("std");
 
+pub const NameError = error {
+    NoSuffix,
+};
+
 /// Converts component type to its name in lowercase.
 ///
 /// For example, \
 /// `path.to.TransformComponent` → "transform", \
 /// `path.to.VelocityComponent` → "velocity".
-pub fn componentName(component: type) [:0]const u8 {
+pub fn componentName(component: type) NameError![:0]const u8 {
     const input = @typeName(component);
 
     var last_dot: usize = 0;
@@ -16,7 +20,7 @@ pub fn componentName(component: type) [:0]const u8 {
 
     const suffix = "Component";
     if (name.len < suffix.len or !std.mem.eql(u8, suffix, name[name.len - suffix.len..name.len])) {
-        @compileError("Component name \"" ++ input ++ "\" must end in \"Component\"");
+        return NameError.NoSuffix;
     }
     const base = name[0..(name.len - suffix.len)];
 
@@ -35,8 +39,8 @@ pub fn componentName(component: type) [:0]const u8 {
 /// For example, \
 /// `path.to.TransformComponent` → "transforms", \
 /// `path.to.VelocityComponent` → "velocities".
-pub fn componentNamePlural(component: type) [:0]const u8 {
-    return plural(componentName(component));
+pub fn componentNamePlural(component: type) NameError![:0]const u8 {
+    return plural(try componentName(component));
 }
 
 /// Convert input string to its plural form.
