@@ -1,7 +1,5 @@
 const std = @import("std");
-//const default = @import("default");
 const rl = @import("raylib");
-const ecs = @import("konoyo");
 const World = @import("world.zig").World;
 const systems = @import("systems.zig");
 const entities = @import("entities.zig");
@@ -13,8 +11,11 @@ pub fn println(comptime fmt: []const u8, args: anytype) void {
     std.debug.print(fmt ++ "\n", args);
 }
 
+const window_width = 960;
+const window_height = 720;
+
 pub fn main() !void {
-    rl.initWindow(960, 720, "konoyo demo");
+    rl.initWindow(window_width, window_height, "konoyo demo");
     rl.setWindowState(rl.ConfigFlags {
         .vsync_hint = true,
     });
@@ -22,16 +23,28 @@ pub fn main() !void {
     var world = World.init(allocator);
     defer world.deinit();
 
+    _ = entities.fumo(&world, rl.Vector2 {
+        .x = window_width / 2,
+        .y = window_height / 2,
+    });
+
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
 
         rl.clearBackground(rl.Color.gray);
 
-        systems.player_movement(&world);
-        systems.draw_sprites(&world);
-        systems.spawn_player(&world);
+        systems.fumoMovement(&world);
+        systems.drawSprites(&world);
+        systems.spawnFumo(&world);
+        systems.fumoCounter(&world);
 
         rl.drawFPS(0, 0);
+        rl.drawText(
+            \\click to spawn fumo
+            \\WASD/arrow keys to move fumo
+            \\space to purge fumo
+            , 0, 20, 20, rl.Color.black
+        );
     }
 }

@@ -11,7 +11,7 @@ const SpriteComponent = _world.SpriteComponent;
 const allactor = @import("main.zig").allocator;
 var player_sprite: ?*Sprite = null;
 
-pub fn player(world: *World, position: rl.Vector2) ecs.EntityId {
+pub fn fumo(world: *World, position: rl.Vector2) ecs.EntityId {
     const entity = world.createEntity();
     world.insert(entity, TransformComponent {
         .position = position,

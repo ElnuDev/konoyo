@@ -7,8 +7,9 @@ const TransformComponent = _world.TransformComponent;
 const SpriteComponent = _world.SpriteComponent;
 const rl = @import("raylib");
 const entities = @import("entities.zig");
+const allocator = @import("main.zig").allocator;
 
-pub fn draw_sprites(world: *World) void {
+pub fn drawSprites(world: *World) void {
     const Query = &[_]type{ ?TransformComponent, SpriteComponent };
     const Drawable = ecs.QueryResult(Query);
     const drawables = world.query(Query);
@@ -29,7 +30,7 @@ pub fn draw_sprites(world: *World) void {
     }
 }
 
-pub fn player_movement(world: *World) void {
+pub fn fumoMovement(world: *World) void {
     const Query = &[_]type{ *TransformComponent };
     const players = world.query(Query);
     defer world.allocator.free(players);
@@ -52,9 +53,15 @@ pub fn player_movement(world: *World) void {
     }
 }
 
-pub fn spawn_player(world: *World) void {
+pub fn spawnFumo(world: *World) void {
     if (!rl.isMouseButtonPressed(rl.MouseButton.left)) {
         return;
     }
-    _ = entities.player(world, rl.getMousePosition());
+    _ = entities.fumo(world, rl.getMousePosition());
+}
+
+pub fn fumoCounter(world: *World) void {
+    const count = world.components.sprites.count();
+    const text: [:0]u8 = @ptrCast(std.fmt.allocPrint(allocator, "{} fumo" ++ [_]u8{0}, .{ count }) catch unreachable);
+    rl.drawText(text, 0, 85, 20, rl.Color.red);
 }
