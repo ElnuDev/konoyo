@@ -20,6 +20,7 @@ pub fn main() !void {
     });
 
     var world = World.init(allocator);
+    defer world.deinit();
 
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();

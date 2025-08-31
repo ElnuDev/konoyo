@@ -25,6 +25,7 @@ var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
 var world = World.init(allocator);
+defer world.deinit();
 ```
 
 ### Spawning entities
