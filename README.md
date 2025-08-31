@@ -81,7 +81,7 @@ const entity = 0;
 // deleteEntity returns whether or not the entity existed to begin with
 _ = world.deleteEntity(entity);
 // delete returns whether or not the component existed to begin with
-_ = world.delete(TransformComponent);
+_ = world.delete(entity, TransformComponent);
 // check if entity exists
 _ = world.entityExists(entity);
 ```
