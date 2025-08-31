@@ -13,16 +13,8 @@ pub fn println(comptime fmt: []const u8, args: anytype) void {
     std.debug.print(fmt ++ "\n", args);
 }
 
-const render_width = 480;
-const render_height = 360;
-
-const zoom = 2;
-
-const window_width = render_width * zoom;
-const window_height = render_height * zoom;
-
 pub fn main() !void {
-    rl.initWindow(window_width, window_height, "shino");
+    rl.initWindow(960, 720, "konoyo demo");
     rl.setWindowState(rl.ConfigFlags {
         .vsync_hint = true,
     });
