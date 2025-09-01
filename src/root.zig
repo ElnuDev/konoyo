@@ -75,9 +75,118 @@ fn Set(T: type) type {
     return std.AutoHashMap(T, void);
 }
 
+fn BiMap(K: type, V: type) type {
+    return struct {
+        values: std.AutoHashMap(K, V),
+        keys: std.AutoHashMap(V, K),
+        allocator: std.mem.Allocator,
+
+        fn init(allocator: std.mem.Allocator) @This() {
+            return @This() {
+                .values = std.AutoHashMap(K, V).init(allocator),
+                .keys = std.AutoHashMap(V, K).init(allocator),
+                .allocator = allocator,
+            };
+        }
+
+        fn getValue(self: *const @This(), key: K) ?V {
+            return self.values.get(key);
+        }
+
+        fn getKey(self: *const @This(), value: V) ?K {
+            return self.keys.get(value);
+        }
+
+        fn deinit(self: *@This()) void {
+            self.values.deinit();
+            self.keys.deinit();
+        }
+
+        fn put(self: *@This(), key: K, value: V) void {
+            if (self.values.get(key)) |old_value| _ = self.keys.remove(old_value);
+            if (self.keys.get(value)) |old_key| _ = self.values.remove(old_key);
+            self.values.put(key, value) catch unreachable;
+            self.keys.put(value, key) catch unreachable;
+        }
+
+        fn removeUnchecked(self: *@This(), key: K, value: V) void {
+            self.values.remove(key);
+            self.values.remove(value);
+        }
+
+        fn removeByKey(self: *@This(), key: K) bool {
+            if (self.values.get(key)) |value| {
+                _ = self.values.remove(key);
+                _ = self.keys.remove(value);
+                return true;
+            }
+            return false;
+        }
+
+        fn removeByValue(self: *@This(), value: V) bool {
+            if (self.keys.get(value)) |key| {
+                _ = self.values.remove(key);
+                _ = self.keys.remove(value);
+                return true;
+            }
+            return false;
+        }
+    };
+}
+
 /// A HashMap of `EntityId` to the given type.
 fn EntityMap(V: type) type {
-    return std.AutoHashMap(EntityId, V);
+    return struct {
+        dense: std.ArrayList(V),
+        entities: BiMap(EntityId, usize),
+        allocator: std.mem.Allocator,
+
+        fn init(allocator: std.mem.Allocator) @This() {
+            return @This() {
+                .dense = std.ArrayList(V).initCapacity(allocator, 1) catch unreachable,
+                .entities = BiMap(EntityId, usize).init(allocator),
+                .allocator = allocator,
+            };
+        }
+
+        fn deinit(self: *@This()) void {
+            self.dense.deinit(self.allocator);
+            self.entities.deinit();
+        }
+
+        fn count(self: *const @This()) usize {
+            return self.dense.items.len;
+        }
+
+        fn get(self: *const @This(), entity: EntityId) ?*V {
+            if (self.entities.getValue(entity)) |i| {
+                return &self.dense.items[i];
+            } else {
+                return null;
+            }
+        }
+
+        fn put(self: *@This(), entity: EntityId, value: V) void {
+            if (self.entities.getValue(entity)) |i| {
+                self.dense.items[i] = value;
+            } else {
+                self.entities.put(entity, self.dense.items.len);
+                self.dense.append(self.allocator, value) catch unreachable;
+            }
+        }
+
+        fn remove(self: *@This(), entity: EntityId) ?V {
+            if (self.entities.getValue(entity)) |i| {
+                const removed = self.dense.swapRemove(i);
+                _ = self.entities.removeByKey(entity);
+                if (i < self.dense.items.len) {
+                    self.entities.put(self.entities.getKey(self.dense.items.len).?, i);
+                }
+                return removed;
+            }
+            return null;
+        }
+    };
 }
 
 /// A struct containing `EntityMap`s for all of the given component struct types.
@@ -100,6 +209,9 @@ fn ComponentSet(comptime Components: []const type) type {
         switch (@typeInfo(Component)) {
             .@"struct" => {},
             else => @compileError("All components must be structs"),
+        }
+        if (@sizeOf(Component) == 0) {
+            @compileError("Zero-sized components (tags) are currently not supported");
         }
         const name = componentName(Component)
             catch @compileError("Component name \"" ++ @typeName(Component) ++ "\" must end in \"Component\"");
@@ -160,7 +272,7 @@ pub fn World(comptime Components: []const type) type {
         }
 
         pub fn init(allocator: std.mem.Allocator) @This() {
-            var self = @This() {
+            var self = @This(){
                 .entities = Set(EntityId).init(allocator),
                 .components = undefined,
                 .allocator = allocator,
@@ -180,6 +292,10 @@ pub fn World(comptime Components: []const type) type {
 
         /// Query the ECS world.
         pub fn query(self: *const @This(), comptime Query: []const type) []QueryResult(Query) {
+            // TODO: Currently the iteration loop goes over all entities in the world.
+            // This is quite inefficient, since each component knows its own entity list --
+            // a simple optimization to minimize the total number of accesses is to pick the
+            // component set with the fewest elements and then only iterate over its elements instead.
             var results = QueryResults(Query)
                 .initCapacity(self.allocator, self.entities.count()) catch unreachable;
             var iter = self.entities.keyIterator();
@@ -191,14 +307,20 @@ pub fn World(comptime Components: []const type) type {
                     @field(result, field.name) = @field(
                         self.components,
                         componentNamePlural(field.@"type") catch unreachable,
-                    ).getPtr(entity.*) orelse continue :outer;
+                    ).get(entity.*) orelse continue :outer;
                 }
             }
             return results.toOwnedSlice(self.allocator) catch unreachable;
         }
 
+        pub fn count(self: *const @This(), comptime Component: type) usize {
+            comptime @This().validateComponent(Component);
+            return @field(self.components, componentNamePlural(Component) catch unreachable).dense.items.len;
+        }
+
         pub fn get(self: *const @This(), entity: EntityId, comptime Component: type) ?*Component {
-            return @field(self.components, componentNamePlural(Component)).getPtr(entity);
+            comptime @This().validateComponent(Component);
+            return @field(self.components, componentNamePlural(Component) catch unreachable).get(entity);
         }
 
         pub fn insert(self: *@This(), entity: EntityId, component: anytype) void {
@@ -207,12 +329,12 @@ pub fn World(comptime Components: []const type) type {
             @field(
                 self.components,
                 componentNamePlural(@TypeOf(component)) catch unreachable,
-            ).put(entity, component) catch unreachable;
+            ).put(entity, component);
         }
 
         pub fn delete(self: *@This(), entity: EntityId, comptime Component: type) bool {
             comptime @This().validateComponent(Component);
-            return @field(self.components, componentNamePlural(Component)).remove(entity);
+            return @field(self.components, componentNamePlural(Component) catch unreachable).remove(entity);
         }
 
         pub fn existsEntity(self: *const @This(), entity: EntityId) bool {
@@ -237,24 +359,43 @@ pub fn World(comptime Components: []const type) type {
     };
 }
 
-const assert = std.debug.assert;
+const expect = std.testing.expect;
 
-const TestAComponent = struct {};
-const TestBComponent = struct {};
-const TestWorld = World(&[_]type {
+const TestAComponent = struct { foo: u8 = 42 };
+const TestBComponent = struct { bar: u8 = 69 };
+const TestWorld = World(&[_]type{
     TestAComponent,
     TestBComponent,
 });
+
+fn _createA(world: *TestWorld) void {
+    const entity = world.createEntity();
+    world.insert(entity, TestAComponent{});
+}
+
+test "single" {
+    var world = TestWorld.init(std.testing.allocator);
+    defer world.deinit();
+
+    _createA(&world);
+    _createA(&world);
+    try expect(world.entities.count() == 2);
+
+    const results = world.query(&[_]type{TestAComponent});
+    defer world.allocator.free(results);
+
+    try expect(results.len == 2);
+}
 
 test "optional" {
     var world = TestWorld.init(std.testing.allocator);
     defer world.deinit();
 
-    const entity = world.createEntity();
-    world.insert(entity, TestAComponent {});
+    _createA(&world);
+    try expect(world.entities.count() == 1);
 
-    const results = world.query(&[_]type { TestAComponent, ?TestBComponent });
+    const results = world.query(&[_]type{ TestAComponent, TestBComponent });
     defer world.allocator.free(results);
 
-    assert(results.len == 1);
+    try expect(results.len == 1);
 }

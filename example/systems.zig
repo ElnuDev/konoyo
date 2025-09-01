@@ -61,7 +61,7 @@ pub fn spawnFumo(world: *World) void {
 }
 
 pub fn fumoCounter(world: *World) void {
-    const count = world.components.sprites.count();
+    const count = world.count(SpriteComponent);
     const text: [:0]u8 = @ptrCast(std.fmt.allocPrint(allocator, "{} fumo" ++ [_]u8{0}, .{ count }) catch unreachable);
     rl.drawText(text, 0, 85, 20, rl.Color.red);
 }
