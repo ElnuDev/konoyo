@@ -11,14 +11,15 @@ pub fn println(comptime fmt: []const u8, args: anytype) void {
     std.debug.print(fmt ++ "\n", args);
 }
 
-const window_width = 960;
-const window_height = 720;
+pub const window_width = 960;
+pub const window_height = 720;
 
 pub fn main() !void {
     rl.initWindow(window_width, window_height, "konoyo demo");
-    rl.setWindowState(rl.ConfigFlags {
-        .vsync_hint = true,
-    });
+
+    // rl.setWindowState(rl.ConfigFlags {
+    //     .vsync_hint = true,
+    //});
 
     var world = World.init(allocator);
     defer world.deinit();
@@ -41,10 +42,10 @@ pub fn main() !void {
 
         rl.drawFPS(0, 0);
         rl.drawText(
-            \\click to spawn fumo
+            \\click or Q to spawn fumo
             \\WASD/arrow keys to move fumo
             \\space to purge fumo
-            , 0, 20, 20, rl.Color.black
+            , 0, 20, 20, rl.Color.white
         );
     }
 }

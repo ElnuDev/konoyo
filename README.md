@@ -1,12 +1,18 @@
 # konoyo
 
-A very simple ECS implemented in Zig with heavy use of comptime.
+A very simple ECS implemented in Zig with heavy use of comptime. Doesn't do anything fancy like archetypes.
 
-To run the raylib exmaple, run `zig build -Dexample run`. You can click to spawn fumo, use WASD/arrow keys to move fumo, and press space to purge fumo.
+To run the raylib exmaple, run `zig build -Dexample run`.
 
 ## Getting started
 
-To get started, import konoyo and initialize an ECS world type definition with a component list. Component types cannot be named "EntityComponent" and must end in "Component". This convention is enforced so it's clear what types in your project are queryable.
+To get started, import konoyo and initialize an ECS world type definition with a component list.
+
+Component types must meet the following requirements:
+
+- name must end in "Component". This convention is enforced so it's clear what types in your project are queryable.
+- cannot be named "EntityComponent"
+- cannot be zero-sized (e.g. empty structs)
 
 Once you have declared your world type, you can initialize it with an allocator. For each of the provided components, konoyo internally stores a hash table mapping from a `u32` entity ID to component instances.
 
@@ -77,6 +83,9 @@ const Query = &[_]type{ *TransformComponent, ?SpriteComponent };
 ### More utils
 
 ```ZIG
+// get total number of components with given component
+_ = world.count(SpriteComponent);
+
 const entity = 0;
 // deleteEntity returns whether or not the entity existed to begin with
 _ = world.deleteEntity(entity);

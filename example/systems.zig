@@ -54,14 +54,20 @@ pub fn fumoMovement(world: *World) void {
 }
 
 pub fn spawnFumo(world: *World) void {
-    if (!rl.isMouseButtonPressed(rl.MouseButton.left)) {
-        return;
+    const random = std.crypto.random;
+    const window_width = @import("main.zig").window_width;
+    const window_height = @import("main.zig").window_height;
+
+    if (rl.isKeyDown(rl.KeyboardKey.q)) {
+        _ = entities.fumo(world, rl.Vector2 {
+            .x = random.float(f32) * window_width,
+            .y = random.float(f32) * window_height,
+        });
     }
-    _ = entities.fumo(world, rl.getMousePosition());
 }
 
 pub fn fumoCounter(world: *World) void {
     const count = world.count(SpriteComponent);
     const text: [:0]u8 = @ptrCast(std.fmt.allocPrint(allocator, "{} fumo" ++ [_]u8{0}, .{ count }) catch unreachable);
-    rl.drawText(text, 0, 85, 20, rl.Color.red);
+    rl.drawText(text, 0, 85, 20, rl.Color.white);
 }
