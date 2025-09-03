@@ -373,6 +373,11 @@ fn _createA(world: *TestWorld) void {
     world.insert(entity, TestAComponent{});
 }
 
+test "refAllDeclsRecursive" {
+    std.testing.refAllDeclsRecursive(@This());
+    std.testing.refAllDeclsRecursive(TestWorld);
+}
+
 test "single" {
     var world = TestWorld.init(std.testing.allocator);
     defer world.deinit();
