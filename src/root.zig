@@ -300,16 +300,24 @@ pub fn World(comptime Components: []const type) type {
                 .initCapacity(self.allocator, self.entities.count()) catch unreachable;
             var iter = self.entities.keyIterator();
             outer: while (iter.next()) |entity| {
-                var result = results.addOne(self.allocator) catch unreachable;
-                result.entity = entity.*;
+                var result = results.addOneAssumeCapacity();
                 inline for (std.meta.fields(QueryResult(Query))) |field| inner: {
                     comptime if (std.mem.eql(u8, field.name, "entity")) break :inner;
                     @field(result, field.name) = @field(
                         self.components,
                         componentNamePlural(field.@"type") catch unreachable,
-                    ).get(entity.*) orelse continue :outer;
+                    ).get(entity.*) orelse switch (@typeInfo(field.@"type")) {
+                        .optional => null,
+                        .pointer => {
+                            results.shrinkRetainingCapacity(results.items.len - 1);
+                            continue :outer;
+                        },
+                        else => unreachable,
+                    };
                 }
+                result.entity = entity.*;
             }
+            results.shrinkAndFree(self.allocator, results.items.len);
             return results.toOwnedSlice(self.allocator) catch unreachable;
         }
 
@@ -399,7 +407,7 @@ test "optional" {
     _createA(&world);
     try expect(world.entities.count() == 1);
 
-    const results = world.query(&[_]type{ TestAComponent, TestBComponent });
+    const results = world.query(&[_]type{ TestAComponent, ?TestBComponent });
     defer world.allocator.free(results);
 
     try expect(results.len == 1);
