@@ -404,3 +404,16 @@ test "optional" {
 
     try expect(results.len == 1);
 }
+
+test "empty" {
+    var world = TestWorld.init(std.testing.allocator);
+    defer world.deinit();
+
+    _createA(&world);
+    try expect(world.entities.count() == 1);
+
+    const results = world.query(&[_]type{ TestBComponent });
+    defer world.allocator.free(results);
+
+    try expect(results.len == 0);
+}
